@@ -1,0 +1,81 @@
+spring:
+  application:
+    name: central-service
+
+  threads:
+    virtual:
+      enabled: true
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: 5672
+    username: guest
+    password: guest
+
+  cloud:
+    function:
+      definition: processSensorEvent
+    stream:
+      bindings:
+        processSensorEvent-in-0:
+          destination: sensor-exchange
+          group: central-service-group # CRITICAL: Creates a persistent queue & enables load balancing
+          consumer:
+            concurrency: 5
+            max-attempts: 3 # Retry 3 times before sending to DLQ (1 initial + 2 retries = 3 total)
+            back-off-initial-interval: 1000
+            back-off-max-interval: 10000
+            back-off-multiplier: 2.0
+
+      rabbit:
+        bindings:
+          processSensorEvent-in-0:
+            consumer:
+              # Bind to ALL sensor data (Wildcard)
+              # If you wanted only Temperature: 'sensor.data.t*'
+              binding-routing-key: 'sensor.data.#'
+              auto-bind-dlq: true
+              republish-to-dlq: true
+              dlq-ttl: 604800000 # 7 Days (Time to live in DLQ)
+
+server:
+  port: 8082
+
+central:
+  threshold:
+    temperature: 35.0 # Can be overridden by env var: CENTRAL_THRESHOLD_TEMPERATURE
+    humidity: 50.0    # Can be overridden by env var: CENTRAL_THRESHOLD_HUMIDITY
+
+management:
+  server:
+    port: 8092
+  endpoints:
+    web:
+      exposure:
+        include: [ "info", "health", "metrics", "prometheus" ]
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    az.et.central: DEBUG
+
+info:
+  application:
+    name: ${spring.application.name}
+    java-version: ${jdkVersion}
+    spring-boot-version: ${springBootVersion}
+    spring-cloud-version: ${springCloudVersion}
+
+---
+# Docker Profile: Active when running inside Docker Compose
+spring:
+  config:
+    activate:
+      on-profile: docker
+  rabbitmq:
+    host: rabbitmq # The service name in docker-compose

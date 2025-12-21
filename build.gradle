@@ -1,0 +1,102 @@
+plugins {
+    id 'org.springframework.boot' version "$springBootVersion" apply false
+    id 'io.spring.dependency-management' version "$springDependencyManagementVersion" apply false
+}
+
+allprojects {
+    group = "$projectGroup"
+    version = "$projectVersion"
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven { url = 'https://repo.spring.io/milestone' }
+    }
+}
+
+subprojects {
+
+    apply plugin: 'java'
+    apply plugin: 'jacoco'
+    apply plugin: 'org.springframework.boot'
+    apply plugin: 'io.spring.dependency-management'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    processResources {
+        filesMatching('application.yml') {
+            expand(project.properties)
+        }
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+
+        systemProperty 'junit.jupiter.execution.parallel.enabled', 'true'
+        systemProperty 'junit.jupiter.execution.parallel.mode.default', 'concurrent'
+        systemProperty 'junit.jupiter.execution.parallel.mode.classes.default', 'concurrent'
+        systemProperty 'junit.jupiter.execution.parallel.config.strategy', 'dynamic'
+        systemProperty 'junit.jupiter.execution.parallel.config.dynamic.factor', '1'
+
+        testLogging {
+            events "passed", "skipped", "failed"
+            exceptionFormat "full"
+        }
+
+        finalizedBy jacocoTestReport
+    }
+
+    jacoco {
+        toolVersion = "$jacocoToolVersion"
+    }
+
+    ext.jacocoExcludes = [
+            '**/config/**',
+            '**/util/**',
+            '**/exception/**',
+            '**/model/**',
+            '**/event/**',
+            '**/*Config.*',
+            '**/*Dto.*',
+            '**/*Exception.*',
+            '**/*Application.*'
+    ]
+
+    jacocoTestReport {
+        dependsOn test
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
+        }
+    }
+
+    jacocoTestCoverageVerification {
+        violationRules {
+            rule {
+                limit {
+                    counter = 'LINE'
+                    minimum = 0.80
+                }
+            }
+        }
+    }
+
+    check.dependsOn jacocoTestCoverageVerification
+
+    tasks.withType(Javadoc).configureEach {
+        options.addStringOption('Xdoclint:none', '-quiet')
+        failOnError = false
+    }
+
+    afterEvaluate {
+        [jacocoTestReport, jacocoTestCoverageVerification].each { task ->
+            task.classDirectories.setFrom(files(task.classDirectories.files.collect {
+                fileTree(dir: it, exclude: jacocoExcludes)
+            }))
+        }
+    }
+}

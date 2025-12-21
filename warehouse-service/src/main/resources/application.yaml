@@ -1,0 +1,76 @@
+spring:
+  application:
+    name: warehouse-service
+
+  threads:
+    virtual:
+      enabled: true
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: 5672
+    username: guest
+    password: guest
+    template:
+      retry:
+        enabled: true
+        initial-interval: 1000ms
+        max-interval: 10000ms
+        multiplier: 2
+        max-attempts: 3
+
+  cloud:
+    stream:
+      bindings:
+        sensor-out-0:
+          destination: sensor-exchange
+          contentType: application/json
+      rabbit:
+        bindings:
+          sensor-out-0:
+            producer:
+              exchange-type: topic
+              routing-key-expression: "'sensor.data.' + headers['sensorId']"
+
+server:
+  port: 8081
+
+warehouse:
+  udp:
+    temperature-port: 3344
+    humidity-port: 3355
+    debug-port: 3366
+
+management:
+  server:
+    port: 8091
+  endpoints:
+    web:
+      exposure:
+        include: [ "info", "health", "metrics", "prometheus" ]
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    az.et.warehouse: DEBUG
+
+info:
+  application:
+    name: ${spring.application.name}
+    java-version: ${jdkVersion}
+    spring-boot-version: ${springBootVersion}
+    spring-cloud-version: ${springCloudVersion}
+
+---
+# Docker Profile: Active when running inside Docker Compose
+spring:
+  config:
+    activate:
+      on-profile: docker
+  rabbitmq:
+    host: rabbitmq # The service name in docker-compose

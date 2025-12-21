@@ -1,0 +1,92 @@
+services:
+
+  # ---------------------------------------------------
+  # RabbitMQ (Message Broker)
+  # ---------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: sensor-broker
+    restart: unless-stopped
+    ports:
+      - "5672:5672"   # AMQP protocol
+      - "15672:15672" # Management Dashboard (http://localhost:15672)
+      - "61613:61613" # STOMP (Optional, enabled via plugin)
+      - "5671:5671"   # AMQP 1.0 (Optional, enabled via plugin)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      # 1. Persist Data (CRITICAL: Keeps queues alive after restart)
+      - rabbitmq_data:/var/lib/rabbitmq
+
+      # 2. Mount Plugins List
+      - ./rabbitmq-config/enabled_plugins:/etc/rabbitmq/enabled_plugins
+
+      # 3. Mount Main Config
+      - ./rabbitmq-config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sensor-net
+
+  # ---------------------------------------------------
+  # Warehouse Service (UDP Edge Collector)
+  # ---------------------------------------------------
+  warehouse-service:
+    build:
+      context: ../warehouse-service
+      dockerfile: ../warehouse-service/Dockerfile
+    container_name: warehouse-service
+    ports:
+      - "8081:8081"     # HTTP API
+      - "8091:8091"     # Actuator
+      - "3344:3344/udp" # UDP Port for Temperature
+      - "3355:3355/udp" # UDP Port for Humidity
+      - "3366:3366/udp" # Debug port for firing Retry & DLQ
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      WAREHOUSE_UDP_TEMPERATURE_PORT: 3344
+      WAREHOUSE_UDP_HUMIDITY_PORT: 3355
+      WAREHOUSE_UDP_DEBUG_PORT: 3366
+      JAVA_TOOL_OPTIONS: -Xms256m -Xmx512m
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - sensor-net
+
+  # ---------------------------------------------------
+  # Central Service (Core Processor)
+  # ---------------------------------------------------
+  central-service:
+    build:
+      context: ../central-service
+      dockerfile: ../central-service/Dockerfile
+    container_name: central-service
+    ports:
+      - "8082:8082"     # HTTP API
+      - "8092:8092"     # Actuator
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      CENTRAL_THRESHOLD_TEMPERATURE: 35.0
+      CENTRAL_THRESHOLD_HUMIDITY: 50.0
+      JAVA_TOOL_OPTIONS: -Xms256m -Xmx512m
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - sensor-net
+
+volumes:
+  rabbitmq_data:
+
+networks:
+  sensor-net:
+    driver: bridge
