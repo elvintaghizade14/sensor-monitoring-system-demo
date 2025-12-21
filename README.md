@@ -88,7 +88,7 @@ Use the included script to clean, build, test, and deploy everything: This scrip
 Open terminal and:
 
 - `git clone https://github.com/elvintaghizade14/sensor-monitoring-demo.git` - clone the project
-- `cd ./banking` - change directory into the project
+- `cd ./sensor-monitoring-demo` - change directory into the project
 - `chmod +x ./start.sh` - add permission to `start.sh` file to be able to run command inside it
 - `chmod +x ./gradlew`  - add permission to `gradlew` file to be able to clean and build
 - `./start.sh` - start app
@@ -124,3 +124,8 @@ exception in the `central-service`.
     WARN ... FAILURE TRIGGERED: Simulating runtime crash for [ID: die]. RabbitMQ should catch this and RETRY.
 
 ---
+
+### Requirements
+
+![Sensor Monitoring System Requirements - Part #1](./_diagrams/task-part-1.png)
+![Sensor Monitoring System Requirements - Part #2](./_diagrams/task-part-2.png)
