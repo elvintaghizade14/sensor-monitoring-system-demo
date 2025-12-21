@@ -28,12 +28,19 @@ public final class LogUtil {
             log.warn("The host name could not be determined, using `localhost` as fallback");
         }
 
-        log.info("\n----------------------------------------------------------\n\t"
-                        + "Application '{}' is running! Access URLs:\n\t"
-                        + "Local: \t\t{}://localhost:{}{}\n\t"
-                        + "External: \t{}://{}:{}{}\n\t"
-                        + "Profile(s): \t{}"
-                        + "\n----------------------------------------------------------",
+        log.info("""
+                        
+                        ----------------------------------------------------------
+                        \t\
+                        Application '{}' is running! Access URLs:
+                        \t\
+                        Local: \t\t{}://localhost:{}{}
+                        \t\
+                        External: \t{}://{}:{}{}
+                        \t\
+                        Profile(s): \t{}\
+                        
+                        ----------------------------------------------------------""",
                 env.getProperty("spring.application.name"),
                 protocol,
                 serverPort,

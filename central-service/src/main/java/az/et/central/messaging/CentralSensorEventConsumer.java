@@ -31,7 +31,7 @@ public class CentralSensorEventConsumer {
             }
 
             final String eventId = event.getEventId().toString();
-            try (MDC.MDCCloseable c = MDC.putCloseable("eventId", eventId)) {
+            try (MDC.MDCCloseable ignored = MDC.putCloseable("eventId", eventId)) {
                 log.info("Consuming event [ID: {}]", eventId);
 
                 sensorService.processData(event.getPayload());

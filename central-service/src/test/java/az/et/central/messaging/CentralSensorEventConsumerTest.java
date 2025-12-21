@@ -91,6 +91,7 @@ class CentralSensorEventConsumerTest {
 
     @Test
     @DisplayName("Should discard (ACK) when Validator finds violations")
+    @SuppressWarnings("unchecked")
     void shouldDiscard_WhenValidationFails() {
         SensorDataDto invalidPayload = SensorDataDto.builder()
                 .sensorId(null)
